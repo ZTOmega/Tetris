@@ -1,6 +1,6 @@
 import pygame
 from copy import deepcopy
-from random import choice, randint
+from random import choice
 
 class Game():
     def __init__(self):
@@ -17,7 +17,11 @@ class Game():
 
         self.piece, self.nextPiece = deepcopy(choice(self.piecesList)), deepcopy(choice(self.piecesList))
         self.dirX = 0
-        self.timerCount, self.timerSpeed, self.timerLimit = 0, 2, 50
+
+        # Timers
+        self.timerYCount, self.timerYSpeed, self.timerYLimit = 0, 10, 900
+        self.timerXCount, self.timerXSpeed, self.timerXLimit = 0, 1, 5
+        self.speedY = 10
 
         self.dx, self.rotate = 0, False
 
@@ -37,8 +41,9 @@ class Game():
 
         self.color, self.nextColor = self.getColor(), self.getColor()
 
+        # Texts
         self.titleFont = pygame.font.Font("../Tetris/font/progresspixel-bold.ttf", 50)
-        self.titleTetris = self.titleFont.render("TETRIS", False, (250, 100, 10))
+        self.titleTetris = self.titleFont.render("TETRIS", False, (255, 240, 5))
 
         self.font = pygame.font.Font("../Tetris/font/progresspixel-bold.ttf", 35)
         self.titleScore = self.font.render("SCORE", False, (30, 240, 10))
@@ -46,14 +51,15 @@ class Game():
 
         self.record = "0"
 
-        self.titleRect = pygame.Rect((345, 10), (200, 75))
-        self.previewRect = pygame.Rect((365, 100), (165, 135))
-        self.scoreRect = pygame.Rect((345, 250), (200, 110))
+        # Interface
+        self.titleRect = pygame.Rect((345, 20), (200, 75))
+        self.previewRect = pygame.Rect((365, 130), (165, 135))
+        self.scoreRect = pygame.Rect((345, 280), (200, 110))
         self.recordRect = pygame.Rect((345, 450), (200, 110))
 
         # Audio
         self.music = pygame.mixer.Sound("../Tetris/Audio/Tetris_theme.mp3")
-        self.music.set_volume(0.04)
+        self.music.set_volume(0.08)
         self.music.play(loops = -1)
 
         self.hit = pygame.mixer.Sound("../Tetris/Audio/8_bit_slam.mp3")
@@ -66,13 +72,13 @@ class Game():
         self.lineComplete.set_volume(0.1)
 
         self.gameOverSound = pygame.mixer.Sound("../Tetris/Audio/game_over_arcade.wav")
-        self.gameOverSound.set_volume(0.5)
+        self.gameOverSound.set_volume(0.7)
 
     def drawRects(self):
-        pygame.draw.rect(screen, "white", self.titleRect, 0, 12)
+        pygame.draw.rect(screen, (50, 70, 70), self.titleRect, 0, 12)
         pygame.draw.rect(screen, (50, 50, 70), self.previewRect, 0, 12)
         pygame.draw.rect(screen, (50, 70, 50), self.scoreRect, 0, 12)
-        pygame.draw.rect(screen, (70, 50, 50), self.recordRect, 0, 12)
+        pygame.draw.rect(screen, (60, 40, 40), self.recordRect, 0, 12)
 
     def screenGrid(self):
         self.grid = [pygame.Rect((x * tileSize, y * tileSize), (tileSize, tileSize)) for x in range(amountTilesWidth) for y in range(amountTilesHeight)]
@@ -87,24 +93,46 @@ class Game():
     def drawNextPiece(self):
         for tile in range(4):
             self.pieceRect.x = self.nextPiece[tile].x * tileSize + 290
-            self.pieceRect.y = self.nextPiece[tile].y * tileSize + 120
+            self.pieceRect.y = self.nextPiece[tile].y * tileSize + 150
             pygame.draw.rect(screen, self.nextColor, self.pieceRect)
+
+    def getInput(self):
+        keys = pygame.key.get_pressed()
+
+        # Left And Right Move
+        if keys[pygame.K_RIGHT]:
+            self.dirX = 1
+            self.movePieceX()
+        if keys[pygame.K_LEFT]:
+            self.dirX = -1
+            self.movePieceX()
+
+        # Down Fast
+        if keys[pygame.K_DOWN]:
+            self.timerYSpeed = 890
+        else:
+            self.timerYSpeed = self.speedY
+
 
     def movePieceX(self):
         self.oldPiece = deepcopy(self.piece)
-        for tile in range(4):
-            self.piece[tile].x += self.dirX
+        self.timerXCount += self.timerXSpeed
+        if self.timerXCount > self.timerXLimit:
+            self.timerXCount = 0
 
-            # Limit Border
-            if self.onLimitBorder():
-                self.piece = deepcopy(self.oldPiece)
-                break
+            for tile in range(4):
+                self.piece[tile].x += self.dirX
+
+                # Limit Border
+                if self.onLimitBorder():
+                    self.piece = deepcopy(self.oldPiece)
+                    break
 
     def movePieceY(self):
         # Timer
-        self.timerCount += self.timerSpeed
-        if self.timerCount > self.timerLimit:
-            self.timerCount = 0
+        self.timerYCount += self.timerYSpeed
+        if self.timerYCount > self.timerYLimit:
+            self.timerYCount = 0
 
             # Move
             self.oldPiece = deepcopy(self.piece)
@@ -121,7 +149,6 @@ class Game():
 
                     # Next Piece Preview
                     self.nextPiece, self.nextColor = deepcopy(choice(self.piecesList)), self.getColor()
-                    self.timerLimit = 50
 
                     # Sound
                     self.hit.play()
@@ -132,15 +159,15 @@ class Game():
         center = self.piece[0]
         oldPiece = deepcopy(self.piece)
         if self.rotate:
-            for tile in range(4):
-                x = self.piece[tile].y - center.y
-                y = self.piece[tile].x - center.x
-                self.piece[tile].x = center.x - x
-                self.piece[tile].y = center.y + y
-                if self.onLimitBorder():
-                    self.piece = deepcopy(oldPiece)
-                    break
-            self.rotateSound.play()
+                for tile in range(4):
+                    x = self.piece[tile].y - center.y
+                    y = self.piece[tile].x - center.x
+                    self.piece[tile].x = center.x - x
+                    self.piece[tile].y = center.y + y
+                    if self.onLimitBorder():
+                        self.piece = deepcopy(oldPiece)
+                        break
+                self.rotateSound.play()
 
     def onLimitBorder(self):
         for tile in range(4):
@@ -168,15 +195,15 @@ class Game():
             if count < amountTilesWidth:
                 line -= 1
             else:
-                self.timerCount += 3
+                self.speedY += 1
                 self.lines += 1
                 self.lineComplete.play()
 
 
     def drawText(self):
-        screen.blit(self.titleTetris, (350, 0))
-        screen.blit(self.titleScore, (380, 250))
-        screen.blit(self.font.render(str(self.score), False, (230, 230, 230)), (380, 295))
+        screen.blit(self.titleTetris, (350, 10))
+        screen.blit(self.titleScore, (380, 280))
+        screen.blit(self.font.render(str(self.score), False, (230, 230, 230)), (380, 325))
         screen.blit(self.titleRecord, (365, 450))
         screen.blit(self.font.render(self.record, False, pygame.Color("gold")), (365, 495))
 
@@ -209,7 +236,8 @@ class Game():
                 self.saveRecord(self.record, self.score)
                 # Reset
                 self.mount = [[0 for tile in range(amountTilesWidth)] for tile in range(amountTilesHeight)]
-                self.timerCount, self.timerSpeed, self.timerLimit = 0, 1, 50
+                self.timerYCount, self.timerYSpeed, self.timerYLimit = 0, 10, 900
+                self.speedY = 10
                 self.score = 0
                 # Game Over Animation
                 for rect in self.grid:
@@ -217,13 +245,14 @@ class Game():
                     screen.blit(gameSurface, (20, 20))
                     pygame.display.flip()
                     clock.tick(200)
-                
+
     def run(self):
         self.drawRects()
         self.screenGrid()
         self.getColor()
         self.drawNextPiece()
         self.drawPieces()
+        self.getInput()
         self.movePieceY()
         self.drawMount()
         self.checkLines()
@@ -270,14 +299,6 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 exit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    game.dirX = -1
-                    game.movePieceX()
-                if event.key == pygame.K_RIGHT:
-                    game.dirX = 1
-                    game.movePieceX()
-                if event.key == pygame.K_DOWN:
-                    game.timerLimit = 3
                 if event.key == pygame.K_UP:
                     game.rotate = True
                     game.rotatePiece()
