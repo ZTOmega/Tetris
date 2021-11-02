@@ -63,16 +63,16 @@ class Game():
         self.music.play(loops = -1)
 
         self.hit = pygame.mixer.Sound("../Tetris/Audio/8_bit_slam.mp3")
-        self.hit.set_volume(0.2)
+        self.hit.set_volume(0.25)
 
         self.rotateSound = pygame.mixer.Sound("../Tetris/Audio/Turn.wav")
-        self.rotateSound.set_volume(0.25)
+        self.rotateSound.set_volume(0.3)
 
         self.lineComplete = pygame.mixer.Sound("../Tetris/Audio/evolve.wav")
-        self.lineComplete.set_volume(0.1)
+        self.lineComplete.set_volume(0.15)
 
         self.gameOverSound = pygame.mixer.Sound("../Tetris/Audio/game_over_arcade.wav")
-        self.gameOverSound.set_volume(0.7)
+        self.gameOverSound.set_volume(2)
 
     def drawRects(self):
         pygame.draw.rect(screen, (50, 70, 70), self.titleRect, 0, 12)
